@@ -23,7 +23,7 @@ def open_outlook():
         subprocess.call(['C:\Program Files (x86)\Microsoft Office\root\Office16\Outlook.exe'])
         os.system("C:\Program Files (x86)\Microsoft Office\root\Office16\Outlook.exe")
     except:
-        print("Outlook didn't open successfully")
+        logging.error("Outlook didn't open successfully")
  
 # Checking if outlook is already opened. If not, open Outlook.exe and send email
 def check_and_send_mail(recipient: str, textbody: str):

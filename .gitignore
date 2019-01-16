@@ -1,1 +1,7 @@
 Archive.zip
+.vscode/
+README.md
+__pycache__/
+environment.yml
+input.txt
+temp.py

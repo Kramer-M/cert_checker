@@ -1,6 +1,3 @@
-# Author: Lucas Roelser <roesler.lucas@gmail.com>
-# Modified from serverlesscode.com/post/ssl-expiration-alerts-with-lambda/
-
 import datetime
 import fileinput
 import logging
@@ -9,11 +6,17 @@ import socket
 import ssl
 import time
 from ssl_expiry import *
-from sendMail import *
+from sendOutlookMail import *
+
+# initialize log file
+#logging.basicConfig(filename='CertificateChecker.log', format='%(asctime)s %(message)s: %(levelname)s', filemode='w', level=logging.DEBUG)
+logging.basicConfig(format='%(asctime)s %(levelname)s: %(message)s', filemode='w', level=logging.DEBUG)
+logging.info("Start Program")
 
 # Read in the Certificate target file
 filename = "input.txt"
 if not os.path.isfile(filename):
+    logging.error("{} not found. Please make sure it is in the same directory".format(filename))
     exit()
 
 with open(filename, encoding='utf-8-sig') as f:
@@ -30,6 +33,7 @@ with open(filename, encoding='utf-8-sig') as f:
 # call ssl checker and get remaining days
 for line in lines:
     arg = line.split(';')
+    logging.info("Start to check Certificate for {}".format(arg[0]))
 
     # get the port number if necessary
     try:
@@ -40,25 +44,33 @@ for line in lines:
         hostname = arg[0]
         port = 443
 
-    days = int(arg[1])
-
+    mailRecipient = arg[2]
+    daysFile = int(arg[1])
+    
+    # reset flag
+    flag = False 
     # now get remaining days
     try:
-        rem_days = ssl_valid_time_remaining(hostname, port).days
-        #?print(rem_days, days)
+        date = ssl_expiry_datetime(hostname, port)
+        rem_days = int((date - datetime.datetime.utcnow()).days)
+        flag = True
+
     except Exception as e:
-        textbody = "Error for url '{}': \n \t {}".format(arg[0], e)
-        print(textbody)
-        #!check_and_send_mail('serdar.asan@sap.com', textbody)
+        textbody = "Error for url '{}': \n \t {}".format(hostname, e)
+        logging.error(textbody)
+        check_and_send_mail(mailRecipient, textbody)
         #?check_and_send_mail('manuel.kramer01@sap.com', textbody)
         
     # compare days and send email if they disagree
-    # according to mail smaller than 60
-    if rem_days < 60: 
-        textbody = "Warning for url '{}': \n \t valid remainig days [{}] are smaller than 60.".format(hostname, rem_days)
-        print(textbody)
-        #!check_and_send_mail('serdar.asan@sap.com', textbody)
-        #?check_and_send_mail('manuel.kramer01@sap.com', textbody)
+    # according to mail smaller than 60, check if 
+    if flag:
+        if rem_days < daysFile: 
+            textbody = "Warning for url '{}': \n \t Certificate will expire in {} days. \n \t Date of expiration: {}\n \t Warning for expiration check is set to {} days.".format(hostname, rem_days, date, daysFile)
+            logging.warning(textbody)
+            check_and_send_mail(mailRecipient, textbody)
+        else:
+            logging.debug("No mail sent because certificate won't expire within {} days. Certificate will be valid until {}".format(daysFile, date))
     
+logging.info("End Program")
 
 
